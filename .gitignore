@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+venv/
+.venv/
+
+# Output images
+*.png
+*.jpg
+*.jpeg
+!example.png
+
+# macOS
+.DS_Store
