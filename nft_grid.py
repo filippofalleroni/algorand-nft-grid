@@ -376,7 +376,7 @@ def main():
             names.append(nft["name"])
         else:
             print(f"    ⚠ Impossibile scaricare {nft['name']}, sostituito con placeholder")
-            images.append(Image.new("RGBA", (100, 100), (40, 40, 40)))
+            images.append(make_placeholder(args.cell))
             names.append(nft["name"])
         time.sleep(args.delay)
 
