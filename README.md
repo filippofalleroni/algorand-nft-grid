@@ -7,11 +7,20 @@
 bash install.sh
 ```
 
-**Every time after:**
+**Every time after — open Terminal and run:**
 ```bash
 cd algorand-nft-grid
 ./start.sh
 ```
+
+**Or just double-click from your Desktop:**
+```bash
+bash create_launcher.sh
+```
+This creates a **"NFT Wall Generator"** icon on your Desktop. From then on, just double-click it — no Terminal needed.
+
+> **macOS tip:** the first time you double-click, macOS may show a security warning.
+> Go to **System Settings → Privacy & Security → Open Anyway**.
 
 ---
 
