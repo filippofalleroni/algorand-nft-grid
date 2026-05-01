@@ -378,6 +378,7 @@ def main():
 
     # 7. Download images
     images, names = [], []
+    failed = []
     total = len(to_render)
     for i, nft in enumerate(to_render, 1):
         print(f"  Downloading image {i} of {total} ...", end="\r")
@@ -389,10 +390,18 @@ def main():
             images.append(img)
         else:
             images.append(make_placeholder(cell_size))
+            if nft["name"] and nft["name"] != "—":
+                failed.append(nft["name"])
         names.append(nft["name"])
         time.sleep(args.delay)
 
     print(f"  All images downloaded!              \n")
+
+    if failed:
+        print(f"  ⚠️  {len(failed)} image(s) could not be downloaded and were replaced with a placeholder:")
+        for name in failed:
+            print(f"      - {name}")
+        print()
 
     # 8. Compose grid
     print(f"  Building your {grid_size}x{grid_size} NFT wall ...")
