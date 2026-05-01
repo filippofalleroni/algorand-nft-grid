@@ -19,6 +19,8 @@ bash create_launcher.sh
 ```
 This creates a **"NFT Wall Generator"** icon on your Desktop. From then on, just double-click it — no Terminal needed.
 
+The launcher checks for updates automatically every time you open it, so you'll always have the latest version.
+
 > **macOS tip:** the first time you double-click, macOS may show a security warning.
 > Go to **System Settings → Privacy & Security → Open Anyway**.
 
