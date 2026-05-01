@@ -398,37 +398,34 @@ def main():
     to_render = nfts_resolved[:max_nfts]
     print(f"  Ready! Downloading {min(len([n for n in to_render if n['image_url']]), max_nfts)} images ...\n")
 
-    # 7. Download images — parallel
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    # 7. Download images — try each in order, skip failures and use reserve pool
+    print(f"  Downloading images ...")
+    images, names, failed, skipped = [], [], [], []
+    reserve = nfts_resolved[:]  # full pool
+    used_ids = set()
 
-    total  = len(to_render)
-    results = [None] * total
+    for slot in range(max_nfts):
+        filled = False
+        for nft in reserve:
+            if nft["id"] in used_ids:
+                continue
+            img = download_image(nft["image_url"]) if nft["image_url"] else None
+            if img:
+                images.append(img)
+                names.append(nft["name"])
+                used_ids.add(nft["id"])
+                print(f"  Downloading images ... {len(images)}/{max_nfts}", end="\r")
+                filled = True
+                break
+            else:
+                skipped.append(nft["name"])
+                used_ids.add(nft["id"])
 
-    def download_one(idx_nft):
-        idx, nft = idx_nft
-        if nft["image_url"]:
-            return idx, download_image(nft["image_url"]), nft["name"]
-        return idx, None, nft["name"]
-
-    completed = 0
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = {executor.submit(download_one, (i, nft)): i for i, nft in enumerate(to_render)}
-        for future in as_completed(futures):
-            idx, img, name = future.result()
-            results[idx] = (img, name)
-            completed += 1
-            print(f"  Downloading images ... {completed}/{total}", end="\r")
-
-    images, names, failed = [], [], []
-    for img, name in results:
-        if img:
-            images.append(img)
-        else:
+        if not filled:
             images.append(make_placeholder(cell_size))
-            if name and name != "—":
-                failed.append(name)
-        names.append(name)
+            names.append("—")
 
+    failed = skipped
     print(f"  All images downloaded!              \n")
 
     if failed:
