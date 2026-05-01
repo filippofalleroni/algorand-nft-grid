@@ -1,5 +1,20 @@
 # Algorand NFT Wall Generator
 
+## Quick start
+
+**First time only — install:**
+```bash
+bash install.sh
+```
+
+**Every time after:**
+```bash
+cd algorand-nft-grid
+./start.sh
+```
+
+---
+
 Generate a beautiful square image with all the NFTs from any Algorand wallet.
 
 ![Example 5×5 NFT grid](example.png)
