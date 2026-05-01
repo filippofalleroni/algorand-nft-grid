@@ -290,7 +290,7 @@ def make_grid(images: list[Image.Image], names: list[str], cols: int,
 
 # ── Grid size picker ──────────────────────────────────────────────────────────
 
-def pick_grid_size(total_nfts: int, forced: int | None) -> int:
+def pick_grid_size(total_nfts: int, forced: int | None, wallet_input: str = "") -> int:
     """
     Always offers grids from 2x2 to 10x10.
     If the wallet has fewer NFTs than needed, empty slots use a placeholder.
@@ -313,7 +313,7 @@ def pick_grid_size(total_nfts: int, forced: int | None) -> int:
         note = " ← needs more NFTs than available" if needed > total_nfts else ""
         print(f"  [{i:2d}]  {s}x{s}  =  {needed:3d} NFTs{note}")
 
-    print("\n       Tip: next time you can skip this menu by running:\n            python3 nft_grid.py gloot.algo --size 5")
+    print("\n       Tip: next time you can skip this menu by running:\n            python3 nft_grid.py {wallet_input} --size 5")
 
     while True:
         try:
@@ -383,7 +383,7 @@ def main():
         sys.exit("[ERROR] No NFTs found in this wallet.")
 
     # 4. Pick grid size (interactive or from CLI)
-    grid_size = pick_grid_size(total_nfts, args.size)
+    grid_size = pick_grid_size(total_nfts, args.size, args.wallet or wallet)
     max_nfts  = grid_size * grid_size
 
     cell_size = args.cell
