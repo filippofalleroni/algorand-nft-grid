@@ -44,7 +44,7 @@ IPFS_GATEWAYS = [
 ]
 
 HEADERS = {"User-Agent": "AlgoNFTGrid/1.0"}
-TIMEOUT = 25
+TIMEOUT = 8
 SKIP_UNIT_NAMES = {"ALGO", "USDC", "USDT", "goUSD", "goETH", "goBTC", "wALGO", "VEST"}
 
 # ── IPFS / CID utilities ──────────────────────────────────────────────────────
@@ -335,14 +335,23 @@ def main():
     wallet_assets = get_wallet_assets(wallet)
     print(f"  Scanning for NFTs ...")
 
-    # 4. Filter NFT candidates
-    nft_candidates = []
-    for item in wallet_assets:
+    # 4. Filter NFT candidates — parallel fetch
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def fetch_candidate(item):
         aid    = item["asset-id"]
         params = fetch_asset_params(aid)
         if params and is_nft(params):
-            nft_candidates.append((aid, params))
-        time.sleep(0.05)
+            return (aid, params)
+        return None
+
+    nft_candidates = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(fetch_candidate, item): item for item in wallet_assets}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                nft_candidates.append(result)
 
     total_nfts = len(nft_candidates)
 
@@ -376,24 +385,36 @@ def main():
     to_render = nfts_resolved[:max_nfts]
     print(f"  Ready! Downloading {min(len([n for n in to_render if n['image_url']]), max_nfts)} images ...\n")
 
-    # 7. Download images
-    images, names = [], []
-    failed = []
-    total = len(to_render)
-    for i, nft in enumerate(to_render, 1):
-        print(f"  Downloading image {i} of {total} ...", end="\r")
+    # 7. Download images — parallel
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    total  = len(to_render)
+    results = [None] * total
+
+    def download_one(idx_nft):
+        idx, nft = idx_nft
         if nft["image_url"]:
-            img = download_image(nft["image_url"])
-        else:
-            img = None
+            return idx, download_image(nft["image_url"]), nft["name"]
+        return idx, None, nft["name"]
+
+    completed = 0
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {executor.submit(download_one, (i, nft)): i for i, nft in enumerate(to_render)}
+        for future in as_completed(futures):
+            idx, img, name = future.result()
+            results[idx] = (img, name)
+            completed += 1
+            print(f"  Downloading images ... {completed}/{total}", end="\r")
+
+    images, names, failed = [], [], []
+    for img, name in results:
         if img:
             images.append(img)
         else:
             images.append(make_placeholder(cell_size))
-            if nft["name"] and nft["name"] != "—":
-                failed.append(nft["name"])
-        names.append(nft["name"])
-        time.sleep(args.delay)
+            if name and name != "—":
+                failed.append(name)
+        names.append(name)
 
     print(f"  All images downloaded!              \n")
 
