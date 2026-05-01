@@ -292,40 +292,36 @@ def make_grid(images: list[Image.Image], names: list[str], cols: int,
 
 def pick_grid_size(total_nfts: int, forced: int | None) -> int:
     """
-    Offers grids from 2×2 up to 10×10, capped by available NFTs.
+    Always offers grids from 2x2 to 10x10.
+    If the wallet has fewer NFTs than needed, empty slots use a placeholder.
     If --size is passed via CLI it is used directly.
     """
-    MAX_SIDE = 10
-    max_side = min(MAX_SIDE, int(total_nfts ** 0.5))
+    OPTIONS = list(range(2, 11))  # 2 to 10
 
     if forced is not None:
-        capped = min(forced, max_side)
-        if capped != forced:
-            print(f"[Info] --size {forced} capped to {capped} (only {total_nfts} NFTs available)")
-        return capped
-
-    options = list(range(2, max_side + 1))
+        if forced not in OPTIONS:
+            forced = max(2, min(10, forced))
+            print(f"[Info] --size clamped to {forced}")
+        return forced
 
     print(f"\n[Grid] {total_nfts} NFTs found in wallet.")
-    print("       Choose grid size:\n")
-    for i, s in enumerate(options, 1):
-        bar = "+" * s
-        print(f"  [{i:2d}]  {s}x{s}  =  {s*s:3d} NFTs   {bar}")
-    print(f"\n  [ 0]  Custom size (2-{max_side})")
+    print("       Choose the size of your NFT wall.")
+    print("       If the wallet has fewer NFTs than the grid, empty slots will show a placeholder.\n")
+
+    for i, s in enumerate(OPTIONS, 1):
+        needed = s * s
+        note = " ← needs more NFTs than available" if needed > total_nfts else ""
+        print(f"  [{i:2d}]  {s}x{s}  =  {needed:3d} NFTs{note}")
+
+    print("\n       Tip: next time you can skip this menu by running:\n            python3 nft_grid.py gloot.algo --size 5")
 
     while True:
         try:
-            choice = input("\nChoice: ").strip()
+            choice = input(f"\nChoice [1-{len(OPTIONS)}]: ").strip()
             n = int(choice)
-            if 1 <= n <= len(options):
-                return options[n - 1]
-            elif n == 0:
-                custom = int(input(f"Enter grid side (2-{max_side}): ").strip())
-                if 2 <= custom <= max_side:
-                    return custom
-                print(f"  Out of range (2-{max_side})")
-            else:
-                print("  Invalid choice")
+            if 1 <= n <= len(OPTIONS):
+                return OPTIONS[n - 1]
+            print(f"  Please enter a number between 1 and {len(OPTIONS)}")
         except (ValueError, KeyboardInterrupt):
             print("  Please enter a valid number")
 
@@ -339,8 +335,8 @@ def main():
                         help="Algorand address (58 chars) or NFD (e.g. pippo.algo). Prompted interactively if omitted.")
     parser.add_argument("--size",  type=int,   default=None,
                         help="Grid side length (e.g. 5 → 5x5 = 25 NFTs). Interactive menu if omitted.")
-    parser.add_argument("--cell",  type=int,   default=500,
-                        help="Cell size in pixels (default: 500)")
+    parser.add_argument("--cell",  type=int,   default=None,
+                        help="Cell size in pixels. If omitted, auto-calculated for 1080x1080 output (social-ready).")
     parser.add_argument("--gap",   type=int,   default=4,
                         help="Gap between cells in pixels (default: 4)")
     parser.add_argument("--out",   default=None,
@@ -390,6 +386,14 @@ def main():
     grid_size = pick_grid_size(total_nfts, args.size)
     max_nfts  = grid_size * grid_size
 
+    # Auto cell size for 1080x1080 social output if not specified
+    TARGET_PX = 1080
+    if args.cell is None:
+        cell_size = max(50, (TARGET_PX - (grid_size + 1) * args.gap) // grid_size)
+        print(f"[Grid] Auto cell size: {cell_size}px → output ~{grid_size * cell_size + (grid_size+1)*args.gap}px square (social-ready)")
+    else:
+        cell_size = args.cell
+
     # 5. Resolve image URLs — early stop once we have enough NFTs
     print(f"\n[Metadata] Resolving image URLs (target: {max_nfts} NFTs)…")
     nfts_resolved = []
@@ -424,13 +428,13 @@ def main():
             names.append(nft["name"])
         else:
             print(f"    ⚠ Could not download {nft['name']} — using placeholder")
-            images.append(make_placeholder(args.cell))
+            images.append(make_placeholder(cell_size))
             names.append(nft["name"])
         time.sleep(args.delay)
 
     # 7. Compose grid
     print(f"\n[Grid] Composing {grid_size}x{grid_size} grid ({args.cell}px per cell)…")
-    grid = make_grid(images, names, cols=grid_size, cell_size=args.cell, gap=args.gap)
+    grid = make_grid(images, names, cols=grid_size, cell_size=cell_size, gap=args.gap)
 
     # Output path — Desktop by default
     if args.out:
