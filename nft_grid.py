@@ -35,6 +35,7 @@ ALGONODE_API  = "https://mainnet-api.algonode.cloud/v2"
 NFD_API       = "https://api.nf.domains/nfd"
 
 IPFS_GATEWAYS = [
+    "https://ipfs.algonode.xyz/ipfs/",   # Algonode — best for Algorand NFTs
     "https://ipfs.io/ipfs/",
     "https://dweb.link/ipfs/",
     "https://nftstorage.link/ipfs/",
