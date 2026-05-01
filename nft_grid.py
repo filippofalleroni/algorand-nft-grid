@@ -44,7 +44,9 @@ IPFS_GATEWAYS = [
 ]
 
 HEADERS = {"User-Agent": "AlgoNFTGrid/1.0"}
-TIMEOUT = 8
+TIMEOUT = 5
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
 SKIP_UNIT_NAMES = {"ALGO", "USDC", "USDT", "goUSD", "goETH", "goBTC", "wALGO", "VEST"}
 
 # ── IPFS / CID utilities ──────────────────────────────────────────────────────
@@ -63,32 +65,20 @@ def cid_v1(reserve: str) -> str:
     return "b" + base64.b32encode(raw).decode().lower().rstrip("=")
 
 def fetch_url(url: str, as_json: bool = False, timeout: int = TIMEOUT):
-    """Fetch a URL trying all IPFS gateways in parallel, return first success."""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
+    """Fetch a URL. For IPFS, tries algonode first (fastest for Algorand), then others."""
     if url.startswith("ipfs://") or "/ipfs/" in url:
         cid = (url[7:] if url.startswith("ipfs://") else url.split("/ipfs/", 1)[-1])
         cid = cid.split("#")[0].rstrip("/")
-
-        def try_gateway(gw):
+        for gw in IPFS_GATEWAYS:
             try:
-                r = requests.get(gw + cid, headers=HEADERS, timeout=timeout)
+                r = SESSION.get(gw + cid, timeout=timeout)
                 if r.status_code == 200:
                     return r.json() if as_json else r.content
             except Exception:
                 pass
-            return None
-
-        with ThreadPoolExecutor(max_workers=len(IPFS_GATEWAYS)) as ex:
-            futures = {ex.submit(try_gateway, gw): gw for gw in IPFS_GATEWAYS}
-            for future in as_completed(futures):
-                result = future.result()
-                if result is not None:
-                    return result
         return None
-
     try:
-        r = requests.get(url, headers=HEADERS, timeout=timeout)
+        r = SESSION.get(url, timeout=timeout)
         if r.status_code == 200:
             return r.json() if as_json else r.content
     except Exception:
