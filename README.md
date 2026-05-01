@@ -6,29 +6,70 @@ Generate a square NFT wall image from any Algorand wallet address or NFD.
 
 ---
 
-## Features
+## Quick start (for dummies 🐣)
 
-- **NFD support** — pass `pippo.algo` instead of a raw address
-- **ARC-3 / ARC-19 / ARC-69** metadata resolution
-- **5 IPFS gateways** with automatic fallback (no more 403s)
-- **Auto-filters fungible tokens** — only true NFTs end up in the grid
-- Configurable grid size, cell size, gap and output file
+Never used Python before? No problem. Follow these steps once and you're done.
+
+### Step 1 — Check you have Python 3
+
+Open your terminal and type:
+
+```bash
+python3 --version
+```
+
+You should see something like `Python 3.10.x` or higher. If not, download it from [python.org](https://www.python.org/downloads/).
+
+### Step 2 — Download the script
+
+```bash
+git clone https://github.com/filippofalleroni/algorand-nft-grid.git
+cd algorand-nft-grid
+```
+
+No Git? [Download the ZIP](https://github.com/filippofalleroni/algorand-nft-grid/archive/refs/heads/main.zip) from GitHub, unzip it, and open the folder in your terminal.
+
+### Step 3 — Create a virtual environment
+
+This keeps the required packages isolated from your system Python (required on macOS with Homebrew):
+
+```bash
+python3 -m venv venv
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
+```
+
+You'll see `(venv)` appear at the start of your terminal prompt. Good.
+
+### Step 4 — Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 5 — Run it
+
+```bash
+python3 nft_grid.py famverse.algo
+```
+
+The script will:
+1. Resolve the NFD to an Algorand address
+2. Scan the wallet for NFTs
+3. Show you a menu to pick the grid size (2×2 up to 10×10)
+4. Download the images and save a PNG in the current folder
 
 ---
 
-## Requirements
+## Next time you open the terminal
 
-```
-Python 3.10+
-Pillow
-requests
-base58
-```
-
-Install with:
+Just activate the virtual environment again before running the script:
 
 ```bash
-pip install Pillow requests base58
+cd algorand-nft-grid
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
+python3 nft_grid.py your-nfd.algo
 ```
 
 ---
@@ -36,30 +77,30 @@ pip install Pillow requests base58
 ## Usage
 
 ```bash
-python nft_grid.py <address_or_nfd> [options]
+python3 nft_grid.py <address_or_nfd> [options]
 ```
 
 ### Examples
 
 ```bash
-# From a raw Algorand address (5×5 grid, default)
-python nft_grid.py RWBL6NFN53EH5X3U7LNZW73HNJY5UCSLB2MCCYU2FEX76HEVWTFGBXNYMQ
+# Interactive grid picker (recommended)
+python3 nft_grid.py famverse.algo
 
-# From an NFD
-python nft_grid.py famverse.algo
+# Skip the menu and set size directly
+python3 nft_grid.py famverse.algo --size 5
 
-# 4×4 grid with larger cells
-python nft_grid.py pippo.algo --size 4 --cell 600 --out my_wall.png
+# Raw Algorand address
+python3 nft_grid.py RWBL6NFN53EH5X3U7LNZW73HNJY5UCSLB2MCCYU2FEX76HEVWTFGBXNYMQ
 
-# 3×3 grid with a wider gap between cells
-python nft_grid.py pippo.algo --size 3 --gap 8
+# Custom cell size and output file
+python3 nft_grid.py pippo.algo --size 4 --cell 600 --out my_wall.png
 ```
 
 ### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--size N` | `5` | Grid side length (N×N NFTs) |
+| `--size N` | interactive | Grid side length (N×N NFTs). If omitted, shows a menu. |
 | `--cell PX` | `500` | Cell size in pixels |
 | `--gap PX` | `4` | Gap between cells in pixels |
 | `--out FILE` | `nft_grid.png` | Output filename |
@@ -99,6 +140,17 @@ The script tries these gateways in order, stopping at the first successful respo
 3. `https://nftstorage.link/ipfs/`
 4. `https://w3s.link/ipfs/`
 5. `https://gateway.pinata.cloud/ipfs/`
+
+---
+
+## Requirements
+
+```
+Python 3.10+
+Pillow
+requests
+base58
+```
 
 ---
 
