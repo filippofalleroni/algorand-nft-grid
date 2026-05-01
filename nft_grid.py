@@ -293,7 +293,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Genera un'immagine griglia con gli NFT di un wallet Algorand."
     )
-    parser.add_argument("wallet",  help="Indirizzo Algorand (58 char) o NFD (es. pippo.algo)")
+    parser.add_argument("wallet",  nargs="?", default=None, help="Indirizzo Algorand (58 char) o NFD (es. pippo.algo). Se omesso viene chiesto interattivamente.")
     parser.add_argument("--size",  type=int, default=None, help="Lato della griglia (es. 5 → 5x5=25 NFT). Se omesso viene chiesto interattivamente.")
     parser.add_argument("--cell",  type=int, default=500,  help="Dimensione cella in px (default: 500)")
     parser.add_argument("--gap",   type=int, default=4,    help="Gap tra celle in px (default: 4)")
@@ -301,8 +301,16 @@ def main():
     parser.add_argument("--delay", type=float, default=0.3, help="Pausa tra richieste IPFS in secondi (default: 0.3)")
     args = parser.parse_args()
 
-    # 1. Risolvi NFD → indirizzo se necessario
-    wallet = args.wallet.strip()
+    # 1. Chiedi wallet se non passato da CLI
+    if args.wallet:
+        wallet = args.wallet.strip()
+    else:
+        print("╔══════════════════════════════════════╗")
+        print("║       Algorand NFT Grid Generator    ║")
+        print("╚══════════════════════════════════════╝\n")
+        wallet = input("Inserisci indirizzo Algorand o NFD (es. pippo.algo): ").strip()
+        if not wallet:
+            sys.exit("[ERRORE] Nessun wallet inserito.")
     if wallet.endswith(".algo") or (len(wallet) < 58 and "." in wallet):
         wallet = resolve_nfd(wallet)
 
