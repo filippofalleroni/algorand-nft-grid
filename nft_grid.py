@@ -249,19 +249,57 @@ def make_grid(images: list[Image.Image], names: list[str], cols: int,
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def pick_grid_size(total_nfts: int, forced: int | None) -> int:
+    """
+    Offre griglie da 2x2 fino a 10x10, limitato dagli NFT disponibili.
+    Se --size e passato da CLI lo usa direttamente.
+    """
+    MAX_SIDE = 10
+    max_side = min(MAX_SIDE, int(total_nfts ** 0.5))
+
+    if forced is not None:
+        capped = min(forced, max_side)
+        if capped != forced:
+            print(f"[Info] --size {forced} ridotto a {capped} (solo {total_nfts} NFT disponibili)")
+        return capped
+
+    options = list(range(2, max_side + 1))
+
+    print(f"\n[Grid] {total_nfts} NFT trovati nel wallet.")
+    print("       Scegli la dimensione della griglia:\n")
+    for i, s in enumerate(options, 1):
+        bar = "+" * s
+        print(f"  [{i:2d}]  {s}x{s}  =  {s*s:3d} NFT   {bar}")
+    print(f"\n  [ 0]  Dimensione personalizzata (2-{max_side})")
+
+    while True:
+        try:
+            choice = input("\nScelta: ").strip()
+            n = int(choice)
+            if 1 <= n <= len(options):
+                return options[n - 1]
+            elif n == 0:
+                custom = int(input(f"Inserisci lato griglia (2-{max_side}): ").strip())
+                if 2 <= custom <= max_side:
+                    return custom
+                print(f"  Valore fuori range (2-{max_side})")
+            else:
+                print("  Scelta non valida")
+        except (ValueError, KeyboardInterrupt):
+            print("  Inserisci un numero valido")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Genera un'immagine griglia con gli NFT di un wallet Algorand."
     )
     parser.add_argument("wallet",  help="Indirizzo Algorand (58 char) o NFD (es. pippo.algo)")
-    parser.add_argument("--size",  type=int, default=5,   help="Lato della griglia (default: 5 → 5x5=25 NFT)")
-    parser.add_argument("--cell",  type=int, default=500, help="Dimensione cella in px (default: 500)")
-    parser.add_argument("--gap",   type=int, default=4,   help="Gap tra celle in px (default: 4)")
-    parser.add_argument("--out",   default="nft_grid.png",help="File di output (default: nft_grid.png)")
+    parser.add_argument("--size",  type=int, default=None, help="Lato della griglia (es. 5 → 5x5=25 NFT). Se omesso viene chiesto interattivamente.")
+    parser.add_argument("--cell",  type=int, default=500,  help="Dimensione cella in px (default: 500)")
+    parser.add_argument("--gap",   type=int, default=4,    help="Gap tra celle in px (default: 4)")
+    parser.add_argument("--out",   default="nft_grid.png", help="File di output (default: nft_grid.png)")
     parser.add_argument("--delay", type=float, default=0.3, help="Pausa tra richieste IPFS in secondi (default: 0.3)")
     args = parser.parse_args()
-
-    max_nfts = args.size * args.size
 
     # 1. Risolvi NFD → indirizzo se necessario
     wallet = args.wallet.strip()
@@ -272,17 +310,30 @@ def main():
     wallet_assets = get_wallet_assets(wallet)
     print(f"[Wallet] {len(wallet_assets)} asset trovati totali")
 
-    # 3. Recupera metadati e filtra gli NFT
-    nfts_resolved = []
-    print("[Metadata] Recupero metadati asset…")
+    # 3. Prima passata veloce: conta quanti NFT ci sono (solo params base, no IPFS)
+    print("[Metadata] Scansione NFT nel wallet…")
+    nft_candidates = []
     for item in wallet_assets:
         aid = item["asset-id"]
         params = fetch_asset_params(aid)
-        if not params:
-            continue
-        if not is_nft(params):
-            continue
+        if params and is_nft(params):
+            nft_candidates.append((aid, params))
+        time.sleep(0.05)
 
+    total_nfts = len(nft_candidates)
+    print(f"[NFT] {total_nfts} NFT trovati nel wallet")
+
+    if not nft_candidates:
+        sys.exit("[ERRORE] Nessun NFT trovato nel wallet.")
+
+    # 4. Scegli dimensione griglia (interattivo o da CLI)
+    grid_size = pick_grid_size(total_nfts, args.size)
+    max_nfts  = grid_size * grid_size
+
+    # 5. Risolvi le immagini — early stop appena abbiamo abbastanza NFT
+    print(f"\n[Metadata] Risoluzione immagini (target: {max_nfts} NFT)…")
+    nfts_resolved = []
+    for aid, params in nft_candidates:
         img_url = resolve_image_url(params)
         if img_url:
             nfts_resolved.append({
@@ -290,21 +341,21 @@ def main():
                 "name":      params.get("name", f"ASA {aid}"),
                 "image_url": img_url,
             })
-            print(f"  ✓ {params.get('name', aid)}")
+            print(f"  ✓ [{len(nfts_resolved):03d}/{max_nfts}] {params.get('name', aid)}")
+            if len(nfts_resolved) >= max_nfts:
+                print(f"  … early stop: raggiunti {max_nfts} NFT")
+                break
         else:
             print(f"  - {params.get('name', aid)} (nessuna immagine)")
         time.sleep(0.1)
 
-    print(f"\n[NFT] {len(nfts_resolved)} NFT con immagine trovati")
-
-    if not nfts_resolved:
-        sys.exit("[ERRORE] Nessun NFT trovato nel wallet.")
+    print(f"\n[NFT] {len(nfts_resolved)} NFT con immagine pronti")
 
     # Prendi i primi max_nfts
     to_render = nfts_resolved[:max_nfts]
-    print(f"[Grid] Renderizzazione {len(to_render)} NFT in griglia {args.size}x{args.size}…\n")
+    print(f"[Grid] Renderizzazione {len(to_render)} NFT in griglia {grid_size}x{grid_size}…\n")
 
-    # 4. Scarica le immagini
+    # 6. Scarica le immagini
     images, names = [], []
     for nft in to_render:
         print(f"  ↓ Download: {nft['name']}")
@@ -318,9 +369,9 @@ def main():
             names.append(nft["name"])
         time.sleep(args.delay)
 
-    # 5. Componi la griglia
-    print(f"\n[Grid] Composizione griglia {args.size}x{args.size} ({args.cell}px/cella)…")
-    grid = make_grid(images, names, cols=args.size, cell_size=args.cell, gap=args.gap)
+    # 7. Componi la griglia
+    print(f"\n[Grid] Composizione griglia {grid_size}x{grid_size} ({args.cell}px/cella)…")
+    grid = make_grid(images, names, cols=grid_size, cell_size=args.cell, gap=args.gap)
 
     grid.save(args.out, "PNG", optimize=True)
     w, h = grid.size
