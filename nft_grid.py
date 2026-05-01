@@ -297,7 +297,7 @@ def main():
     parser.add_argument("--size",  type=int, default=None, help="Lato della griglia (es. 5 → 5x5=25 NFT). Se omesso viene chiesto interattivamente.")
     parser.add_argument("--cell",  type=int, default=500,  help="Dimensione cella in px (default: 500)")
     parser.add_argument("--gap",   type=int, default=4,    help="Gap tra celle in px (default: 4)")
-    parser.add_argument("--out",   default="nft_grid.png", help="File di output (default: nft_grid.png)")
+    parser.add_argument("--out",   default=None, help="File di output (default: ~/Desktop/nft_grid_<wallet>.png)")
     parser.add_argument("--delay", type=float, default=0.3, help="Pausa tra richieste IPFS in secondi (default: 0.3)")
     args = parser.parse_args()
 
@@ -313,6 +313,9 @@ def main():
             sys.exit("[ERRORE] Nessun wallet inserito.")
     if wallet.endswith(".algo") or (len(wallet) < 58 and "." in wallet):
         wallet = resolve_nfd(wallet)
+
+    # Etichetta leggibile per il nome file (NFD o primi 8 char dell'indirizzo)
+    wallet_label = args.wallet.strip() if args.wallet else wallet[:8]
 
     # 2. Recupera gli asset del wallet
     wallet_assets = get_wallet_assets(wallet)
@@ -381,9 +384,19 @@ def main():
     print(f"\n[Grid] Composizione griglia {grid_size}x{grid_size} ({args.cell}px/cella)…")
     grid = make_grid(images, names, cols=grid_size, cell_size=args.cell, gap=args.gap)
 
-    grid.save(args.out, "PNG", optimize=True)
+    # Percorso output: Desktop di default con nome wallet
+    if args.out:
+        out_path = args.out
+    else:
+        import re
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", wallet_label)[:30]
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        os.makedirs(desktop, exist_ok=True)
+        out_path = os.path.join(desktop, f"nft_grid_{safe_name}.png")
+
+    grid.save(out_path, "PNG", optimize=True)
     w, h = grid.size
-    print(f"\n✅  Salvato: {args.out}  ({w}×{h} px, {len(images)} NFT)")
+    print(f"\n✅  Salvato: {out_path}  ({w}×{h} px, {len(images)} NFT)")
 
 
 if __name__ == "__main__":
