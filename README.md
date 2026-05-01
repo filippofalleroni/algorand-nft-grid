@@ -1,170 +1,124 @@
-# algo-nft-grid
+# Algorand NFT Wall Generator
 
-Generate a square NFT wall image from any Algorand wallet address or NFD.
+Generate a beautiful square image with all the NFTs from any Algorand wallet.
 
 ![Example 5×5 NFT grid](example.png)
 
 ---
 
-## Quick start (for dummies 🐣)
+## What it does
 
-Never used Python before? No problem. Follow these steps once and you're done.
+You give it an Algorand wallet address or name (like `gloot.algo`) and it downloads all the NFT images and assembles them into a square grid — saved directly to your Desktop, ready to share on Instagram or X.
 
-### Step 1 — Check you have Python 3
+---
 
-Open your terminal and type:
+## Installation (do this once)
 
-```bash
-python3 --version
-```
+### Step 1 — Download the project
 
-You should see something like `Python 3.10.x` or higher. If not, download it from [python.org](https://www.python.org/downloads/).
+Click the green **Code** button on this page → **Download ZIP** → unzip it on your computer.
 
-### Step 2 — Download the script
-
+Or if you have Git:
 ```bash
 git clone https://github.com/filippofalleroni/algorand-nft-grid.git
 cd algorand-nft-grid
 ```
 
-No Git? [Download the ZIP](https://github.com/filippofalleroni/algorand-nft-grid/archive/refs/heads/main.zip) from GitHub, unzip it, and open the folder in your terminal.
+### Step 2 — Install
 
-### Step 3 — Create a virtual environment
-
-This keeps the required packages isolated from your system Python (required on macOS with Homebrew):
-
+**Mac / Linux** — open Terminal, go to the folder and run:
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # macOS / Linux
-# venv\Scripts\activate         # Windows
+bash install.sh
 ```
 
-You'll see `(venv)` appear at the start of your terminal prompt. Good.
-
-### Step 4 — Install dependencies
-
-```bash
+**Windows** — open Command Prompt in the folder and run:
+```
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Step 5 — Run it
-
-```bash
-python3 nft_grid.py famverse.algo
-```
-
-The script will:
-1. Resolve the NFD to an Algorand address
-2. Scan the wallet for NFTs
-3. Show you a menu to pick the grid size (2×2 up to 10×10)
-4. Download the images and save a PNG in the current folder
+That's it. You only need to do this once.
 
 ---
 
-## Next time you open the terminal
+## How to use it
 
-Just activate the virtual environment again before running the script:
+Every time you want to generate a wall, open Terminal in the project folder and run:
 
 ```bash
-cd algorand-nft-grid
-source venv/bin/activate        # macOS / Linux
-# venv\Scripts\activate         # Windows
-python3 nft_grid.py your-nfd.algo
+./start.sh
 ```
+
+On **Windows**:
+```
+venv\Scripts\activate
+python nft_grid.py
+```
+
+The tool will ask you:
+1. **Which wallet?** — enter an address or a name like `gloot.algo`
+2. **How big?** — choose from 2×2 (4 images) up to 10×10 (100 images)
+
+Then it downloads everything and saves two files to your Desktop:
+- **Full resolution** — best for printing or zooming in
+- **1080×1080 px** — ready to post on Instagram or X
 
 ---
 
-## Usage
+## Options (for advanced users)
+
+You can skip the questions by passing everything directly:
 
 ```bash
-python3 nft_grid.py <address_or_nfd> [options]
+./start.sh gloot.algo --size 5
+./start.sh gloot.algo --size 5 --out ~/Pictures/my_wall.png
 ```
-
-### Examples
-
-```bash
-# Interactive grid picker (recommended)
-python3 nft_grid.py famverse.algo
-
-# Skip the menu and set size directly
-python3 nft_grid.py famverse.algo --size 5
-
-# Raw Algorand address
-python3 nft_grid.py RWBL6NFN53EH5X3U7LNZW73HNJY5UCSLB2MCCYU2FEX76HEVWTFGBXNYMQ
-
-# Custom cell size and output file
-python3 nft_grid.py pippo.algo --size 4 --cell 600 --out my_wall.png
-```
-
-### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--size N` | interactive | Grid side length (N×N NFTs). If omitted, shows a menu. |
-| `--cell PX` | `500` | Cell size in pixels |
-| `--gap PX` | `4` | Gap between cells in pixels |
-| `--out FILE` | `nft_grid.png` | Output filename |
-| `--delay SEC` | `0.3` | Delay between IPFS requests |
+| `--size N` | asked interactively | Grid side (e.g. 5 = 5×5 = 25 images) |
+| `--cell PX` | `500` | Image quality per cell in pixels |
+| `--gap PX` | `4` | Space between images |
+| `--out FILE` | Desktop | Where to save the output |
 
 ---
 
-## How it works
+## Supported wallet formats
 
-1. **Resolve the address** — if the input ends in `.algo`, it's resolved via the [NFD API](https://api.nf.domains).
-2. **Fetch wallet assets** — via the [Algonode](https://algonode.io) mainnet API.
-3. **Filter NFTs** — assets with `total ≤ 100` and `decimals == 0` are treated as NFTs; fungible tokens are skipped.
-4. **Resolve images** — handles all three main Algorand NFT standards:
-   - **ARC-3**: metadata JSON on IPFS → `image` field
-   - **ARC-19**: CID derived from the `reserve` address → metadata JSON → image
-   - **ARC-69**: image URL stored directly in the ASA `url` parameter
-5. **Download & compose** — images are fetched with gateway fallback, resized, and arranged in an N×N grid.
+- **NFD** — human-readable names like `gloot.algo`, `famverse.algo`
+- **Algorand address** — the long 58-character string starting from your wallet app
 
 ---
 
-## Supported ARC standards
+## How it works (technical)
 
-| Standard | Method | Notes |
-|----------|--------|-------|
-| ARC-3 | `ipfs://CID#arc3` or `https://ipfs.io/ipfs/CID` | Fetches JSON metadata |
-| ARC-19 | `template-ipfs://{ipfscid:0\|1:…:reserve:sha2-256}` | Derives CID from reserve address |
-| ARC-69 | Direct URL in ASA params | Image URL used as-is |
+1. Resolves NFD names via the [NFD API](https://api.nf.domains)
+2. Fetches wallet assets via [Algonode](https://algonode.io)
+3. Filters out fungible tokens — only true NFTs (ARC-3, ARC-19, ARC-69)
+4. Downloads images via 5 IPFS gateways with automatic fallback
+5. Composes the grid and exports full-res + 1080px social version
 
 ---
 
-## IPFS Gateways
+## Troubleshooting
 
-The script tries these gateways in order, stopping at the first successful response:
+**"No NFTs found"** — the wallet may only contain fungible tokens (currencies), not NFTs.
 
-1. `https://ipfs.io/ipfs/`
-2. `https://dweb.link/ipfs/`
-3. `https://nftstorage.link/ipfs/`
-4. `https://w3s.link/ipfs/`
-5. `https://gateway.pinata.cloud/ipfs/`
+**Some images show "ALGORAND NFT GRID"** — those NFT images could not be downloaded. This can happen when the image is no longer available online.
+
+**Script won't start** — make sure you ran `install.sh` first and that you're in the right folder.
 
 ---
 
 ## Requirements
 
-```
-Python 3.10+
-Pillow
-requests
-base58
-```
-
----
-
-## Contributing
-
-PRs welcome. Ideas for improvement:
-
-- [ ] `--label` flag to overlay NFT names on each cell
-- [ ] `--exclude ASA_ID` to skip specific assets
-- [ ] Multi-page PDF output for large collections
-- [ ] Optional Vestige / Allo metadata fallback
+- Python 3.10 or higher
+- Internet connection
+- Algorand wallet address or NFD
 
 ---
 
 ## License
 
-MIT
+MIT — free to use, modify and share.
