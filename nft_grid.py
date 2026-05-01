@@ -335,8 +335,8 @@ def main():
                         help="Algorand address (58 chars) or NFD (e.g. pippo.algo). Prompted interactively if omitted.")
     parser.add_argument("--size",  type=int,   default=None,
                         help="Grid side length (e.g. 5 → 5x5 = 25 NFTs). Interactive menu if omitted.")
-    parser.add_argument("--cell",  type=int,   default=None,
-                        help="Cell size in pixels. If omitted, auto-calculated for 1080x1080 output (social-ready).")
+    parser.add_argument("--cell",  type=int,   default=500,
+                        help="Cell size in pixels (default: 500)")
     parser.add_argument("--gap",   type=int,   default=4,
                         help="Gap between cells in pixels (default: 4)")
     parser.add_argument("--out",   default=None,
@@ -386,13 +386,7 @@ def main():
     grid_size = pick_grid_size(total_nfts, args.size)
     max_nfts  = grid_size * grid_size
 
-    # Auto cell size for 1080x1080 social output if not specified
-    TARGET_PX = 1080
-    if args.cell is None:
-        cell_size = max(50, (TARGET_PX - (grid_size + 1) * args.gap) // grid_size)
-        print(f"[Grid] Auto cell size: {cell_size}px → output ~{grid_size * cell_size + (grid_size+1)*args.gap}px square (social-ready)")
-    else:
-        cell_size = args.cell
+    cell_size = args.cell
 
     # 5. Resolve image URLs — early stop once we have enough NFTs
     print(f"\n[Metadata] Resolving image URLs (target: {max_nfts} NFTs)…")
@@ -448,6 +442,12 @@ def main():
     grid.save(out_path, "PNG", optimize=True)
     w, h = grid.size
     print(f"\n✅  Saved: {out_path}  ({w}×{h} px, {len(images)} NFTs)")
+
+    # Also save a 1080x1080 social-ready version
+    social_path = out_path.replace(".png", "_1080.png")
+    social = grid.resize((1080, 1080), Image.LANCZOS)
+    social.save(social_path, "PNG", optimize=True)
+    print(f"📱  Social (1080×1080): {social_path}")
 
 
 if __name__ == "__main__":
