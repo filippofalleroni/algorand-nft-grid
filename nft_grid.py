@@ -493,11 +493,21 @@ def main():
     while len(images) < max_nfts:
         images.append(make_placeholder(cell_size))
 
+    successful = max_nfts - sum(1 for img in images if img.size[0] != cell_size or False)
+    n_failed = len(failed_names)
+    n_filler = max_nfts - len(resolved_pool) + n_failed
+    n_filler = max(0, n_filler)
+
     if failed_names:
-        print(f"  ⚠️  {len(failed_names)} image(s) could not be downloaded:")
+        print(f"  ⚠️  {len(failed_names)} image(s) could not be downloaded (replaced with placeholder):")
         for name in failed_names:
             print(f"      - {name}")
         print()
+
+    if max_nfts > total_nfts:
+        missing = max_nfts - total_nfts
+        print(f"  ℹ️  Wallet has {total_nfts} NFTs but grid needs {max_nfts}.")
+        print(f"      {missing} slot(s) will show a placeholder.\n")
 
     # 9. Compose grid
     print(f"  Building your {grid_size}x{grid_size} NFT wall ...")
