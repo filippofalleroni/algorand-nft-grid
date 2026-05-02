@@ -48,8 +48,9 @@ BROWSER_HEADERS = {
 }
 
 TIMEOUT_SHORT = 4   # for metadata JSON fetches (per gateway)
-TIMEOUT_LONG  = 6   # for image downloads (per gateway)
-MAX_WORKERS   = 12
+TIMEOUT_LONG  = 8   # for image downloads (per gateway)
+META_WORKERS  = 12  # parallel workers for metadata (light, fast)
+DL_WORKERS    = 6   # parallel workers for downloads (heavier, avoid rate-limits)
 
 SKIP_UNIT_NAMES = {"ALGO", "USDC", "USDT", "goUSD", "goETH", "goBTC", "wALGO", "VEST"}
 
@@ -99,13 +100,35 @@ def extract_cid(ipfs_url: str) -> str:
 # ── HTTP fetch with multi-gateway IPFS fallback ───────────────────────────────
 
 def fetch_ipfs_bytes(cid: str, timeout: int = TIMEOUT_LONG) -> bytes | None:
-    """Try every gateway, return raw bytes from the first one that gives a valid response."""
+    """Try every gateway, return raw bytes from the first one that gives a valid response.
+    
+    Validates response: status 200, content >1KB, content-type is image/* or octet-stream
+    with valid magic bytes (avoids algonode's empty 200 responses for some CIDs).
+    """
     for gw in IPFS_GATEWAYS:
         try:
             r = SESSION.get(gw + cid, timeout=timeout)
-            # Reject 4xx errors and empty responses
-            if r.status_code == 200 and len(r.content) > 100:
-                return r.content
+            if r.status_code != 200:
+                continue
+            content = r.content
+            if len(content) < 1024:
+                continue  # Too small to be a real image
+            ct = r.headers.get("content-type", "").lower()
+            # Accept images, or octet-stream with image magic bytes
+            if ct.startswith("image/"):
+                return content
+            if ct.startswith("application/octet-stream"):
+                # Check magic bytes for common image formats
+                if (content[:3] == b"\xff\xd8\xff"          # JPEG
+                    or content[:8] == b"\x89PNG\r\n\x1a\n"  # PNG
+                    or content[:6] in (b"GIF87a", b"GIF89a")    # GIF
+                    or content[:4] == b"RIFF"                    # WEBP
+                    or content[:4] == b"<svg"                    # SVG
+                ):
+                    return content
+            # Accept anything else that is large enough — let PIL try
+            if len(content) > 10000:
+                return content
         except Exception:
             pass
     return None
@@ -423,7 +446,7 @@ def main():
     total_assets = len(wallet_assets)
     done_count   = 0
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with ThreadPoolExecutor(max_workers=META_WORKERS) as executor:
         futures = {executor.submit(fetch_and_resolve_nft, item): item for item in wallet_assets}
         for future in as_completed(futures):
             done_count += 1
@@ -461,7 +484,7 @@ def main():
     download_results: dict[int, Image.Image | None] = {}
     failed_names: list[str] = []
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with ThreadPoolExecutor(max_workers=DL_WORKERS) as executor:
         futures = {executor.submit(download_image, n["image_url"]): i
                    for i, n in enumerate(resolved_pool)}
         completed = 0
