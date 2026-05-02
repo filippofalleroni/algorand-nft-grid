@@ -33,7 +33,8 @@ NFD_API      = "https://api.nf.domains/nfd"
 # Gateways ordered by typical reliability for Algorand NFTs.
 # algonode.xyz first (optimized for Algorand), then well-known public gateways.
 IPFS_GATEWAYS = [
-    "https://ipfs.algonode.xyz/ipfs/",   # Best for Algorand NFTs
+    "https://ipfs-pera.algonode.dev/ipfs/",  # Pera Wallet's gateway (most reliable for Algorand)
+    "https://ipfs.algonode.xyz/ipfs/",       # Algonode (Algorand-optimized)
     "https://ipfs.io/ipfs/",
     "https://nftstorage.link/ipfs/",
     "https://w3s.link/ipfs/",
